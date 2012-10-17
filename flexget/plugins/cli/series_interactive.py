@@ -10,13 +10,22 @@ except ImportError:
 
 class SeriesTree(npyscreen.MultiLineTreeNew):
     def display_value(self, vl):
-        content = vl.content
+        content = vl.getContent()
+        result = ''
         if isinstance(content, Series):
-            return content.name
+            result = content.name
+            if not vl.expanded:
+                result += ' - %s episodes' % len(content.episodes)
         elif isinstance(content, Episode):
-            return content.identifier
+            result = content.identifier
+            if not vl.expanded:
+                result += ' - %s releases' % len(content.releases)
         elif isinstance(content, Release):
-            return content.title
+            if content.downloaded:
+                # TODO: Somehow change the icon for TreeLineAnnotated
+                pass
+            result = content.title
+        return result
 
 class SeriesForm(npyscreen.Form):
     def create(self):
@@ -33,10 +42,10 @@ def create_tree_data():
     session = Session()
     tree_root = npyscreen.NPSTreeData()
     for series in session.query(Series):
-        tree_series = tree_root.newChild(content=series)
-        for episode in session.query(Episode).join(Series).filter(Series.id == series.id):
-            tree_ep = tree_series.newChild(content=episode)
-            for release in session.query(Release).join(Episode).filter(Episode.id == episode.id):
+        tree_series = tree_root.newChild(content=series, expanded=False)
+        for episode in series.episodes:
+            tree_ep = tree_series.newChild(content=episode, expanded=False)
+            for release in episode.releases:
                 tree_ep.newChild(content=release)
     return tree_root
 
