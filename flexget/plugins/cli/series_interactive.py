@@ -10,35 +10,37 @@ except ImportError:
 
 class SeriesTreeLineAnnotated(npyscreen.TreeLineAnnotated):
     def getAnnotationAndColor(self):
-        annotate = ''
-        color = self._annotatecolor
-        if hasattr(self.value, 'annotate'):
-            annotate = self.value.annotate
-        return annotate.center(7), color
+        if not self.value:
+            return '', 'CONTROL'
+        return self.value['annotation'].rjust(6), self.value['color']
 
     def display_value(self, vl):
         if not vl:
             return
-        content = vl.getContent()
-        result = ''
-        if isinstance(content, Series):
-            result = content.name
-            if not vl.expanded:
-                result += ' - %s episodes' % len(content.episodes)
-        elif isinstance(content, Episode):
-            result = content.identifier
-            if not vl.expanded:
-                result += ' - %s releases' % len(content.releases)
-        elif isinstance(content, Release):
-            if content.downloaded:
-                vl.annotate = '*'
-            result = content.title
-        return result
+        return vl['text']
 
 class SeriesTree(npyscreen.MultiLineTreeNew):
     _contained_widgets = SeriesTreeLineAnnotated
+
     def display_value(self, vl):
-        return vl
+        content = vl.getContent()
+        text = ''
+        annotation = ''
+        color = 'CONTROL'
+        if isinstance(content, Series):
+            text = content.name
+            annotation = '------'
+            if not vl.expanded:
+                text += ' - %s episodes' % len(content.episodes)
+        elif isinstance(content, Episode):
+            text = content.identifier
+            if not vl.expanded:
+                text += ' - %s releases' % len(content.releases)
+        elif isinstance(content, Release):
+            if content.downloaded:
+                annotation = '*'
+            text = content.title
+        return {'text': text, 'annotation': annotation, 'color': color}
 
 class SeriesForm(npyscreen.Form):
     def create(self):
