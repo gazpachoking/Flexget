@@ -8,8 +8,17 @@ try:
 except ImportError:
     raise DependencyError(issued_by='cli_series', missing='series', message='Series commandline interface not loaded')
 
-class SeriesTree(npyscreen.MultiLineTreeNew):
+class SeriesTreeLineAnnotated(npyscreen.TreeLineAnnotated):
+    def getAnnotationAndColor(self):
+        annotate = ''
+        color = self._annotatecolor
+        if hasattr(self.value, 'annotate'):
+            annotate = self.value.annotate
+        return annotate.center(7), color
+
     def display_value(self, vl):
+        if not vl:
+            return
         content = vl.getContent()
         result = ''
         if isinstance(content, Series):
@@ -22,10 +31,14 @@ class SeriesTree(npyscreen.MultiLineTreeNew):
                 result += ' - %s releases' % len(content.releases)
         elif isinstance(content, Release):
             if content.downloaded:
-                # TODO: Somehow change the icon for TreeLineAnnotated
-                pass
+                vl.annotate = '*'
             result = content.title
         return result
+
+class SeriesTree(npyscreen.MultiLineTreeNew):
+    _contained_widgets = SeriesTreeLineAnnotated
+    def display_value(self, vl):
+        return vl
 
 class SeriesForm(npyscreen.Form):
     def create(self):
