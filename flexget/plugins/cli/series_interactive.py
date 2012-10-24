@@ -1,4 +1,5 @@
 import npyscreen
+import curses
 from flexget.plugin import register_parser_option, DependencyError
 from flexget.event import event
 from flexget.manager import Session
@@ -12,42 +13,49 @@ class SeriesTreeLineAnnotated(npyscreen.TreeLineAnnotated):
     def getAnnotationAndColor(self):
         if not self.value:
             return '', 'CONTROL'
-        return self.value['annotation'].rjust(6), self.value['color']
+        return self.value['ann'].rjust(6), self.value['ann_color']
 
     def display_value(self, vl):
         if not vl:
             return
         return vl['text']
 
-class SeriesTree(npyscreen.MultiLineTreeNew):
+class SeriesTree(npyscreen.MultiLineTreeNewAction):
     _contained_widgets = SeriesTreeLineAnnotated
 
     def display_value(self, vl):
         content = vl.getContent()
         text = ''
-        annotation = ''
-        color = 'CONTROL'
+        ann = ''
+        ann_color = 'CONTROL'
         if isinstance(content, Series):
             text = content.name
-            annotation = '------'
+            ann = '------'
             if not vl.expanded:
                 text += ' - %s episodes' % len(content.episodes)
         elif isinstance(content, Episode):
             text = content.identifier
+            text += ' (' + content.identified_by + ')'
             if not vl.expanded:
                 text += ' - %s releases' % len(content.releases)
         elif isinstance(content, Release):
             if content.downloaded:
-                annotation = '*'
+                ann = '*'
             text = content.title
-        return {'text': text, 'annotation': annotation, 'color': color}
+        return {'text': text, 'ann': ann, 'ann_color': ann_color}
 
-class SeriesForm(npyscreen.Form):
+class SeriesForm(npyscreen.FormBaseNewExpanded):
     def create(self):
-        a = npyscreen.NPSTreeData()
-        a.newChild(content='a').newChild('c')
-        a.newChild(content='b')
         self.series_view = self.add(SeriesTree, values=create_tree_data())
+
+    #  No clue what I'm doing here, but this seems to exit when ESC is pushed.
+    def set_up_exit_condition_handlers(self):
+        self.how_exited_handers = {
+            True: self.exit_app
+        }
+
+    def exit_app(self):
+        self.editing = False
 
 def myFunction(*args):
     F = SeriesForm(name = "Series View")
