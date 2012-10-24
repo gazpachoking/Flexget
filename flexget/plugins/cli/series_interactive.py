@@ -32,16 +32,20 @@ class SeriesTree(npyscreen.MultiLineTreeNewAction):
             text = content.name
             ann = '------'
             if not vl.expanded:
-                text += ' - %s episodes' % len(content.episodes)
+                text += ' - %s episode' % len(content.episodes)
+                if len(content.episodes) > 1:
+                    text += 's'
         elif isinstance(content, Episode):
             text = content.identifier
             text += ' (' + content.identified_by + ')'
             if not vl.expanded:
-                text += ' - %s releases' % len(content.releases)
+                text += ' - %s release' % len(content.releases)
+                if len(content.releases) > 1:
+                    text += 's'
         elif isinstance(content, Release):
             if content.downloaded:
                 ann = '*'
-            text = content.title
+            text = content.title + ' [' + str(content.quality) + ']'
         return {'text': text, 'ann': ann, 'ann_color': ann_color}
 
 class SeriesForm(npyscreen.FormBaseNewExpanded):
