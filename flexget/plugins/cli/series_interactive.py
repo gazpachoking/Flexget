@@ -20,7 +20,7 @@ class SeriesTreeLineAnnotated(npyscreen.TreeLineAnnotated):
             return
         return vl['text']
 
-class SeriesTree(npyscreen.MultiLineTreeNewAction):
+class SeriesTree(npyscreen.MultiLineTreeNew):
     _contained_widgets = SeriesTreeLineAnnotated
 
     def display_value(self, vl):
@@ -48,17 +48,33 @@ class SeriesTree(npyscreen.MultiLineTreeNewAction):
             text = content.title + ' [' + str(content.quality) + ']'
         return {'text': text, 'ann': ann, 'ann_color': ann_color}
 
+    def set_up_handlers(self):
+        super(npyscreen.MultiLineTreeNew, self).set_up_handlers()
+        self.handlers.update({
+            curses.KEY_LEFT: self.h_collapse_tree,
+            curses.KEY_RIGHT: self.h_expand_tree,
+        })
+
+
 class SeriesForm(npyscreen.FormBaseNewExpanded):
     def create(self):
         self.series_view = self.add(SeriesTree, values=create_tree_data())
 
-    #  No clue what I'm doing here, but this seems to exit when ESC is pushed.
-    def set_up_exit_condition_handlers(self):
-        self.how_exited_handers = {
-            True: self.exit_app
-        }
+    # This doesn't work for some reason. exit_app gets called, but app doesn't exit
+    def set_up_handlers(self):
+        super(npyscreen.FormBaseNewExpanded, self).set_up_handlers()
+        self.handlers.update({
+            ord('q'): self.exit_app
+        })
 
-    def exit_app(self):
+    def set_up_exit_condition_handlers(self):
+        super(npyscreen.FormBaseNewExpanded, self).set_up_exit_condition_handlers()
+        self.how_exited_handers.update({
+            #  This should probably be npyscreen.wgwidget.EXITED_ESCAPE, but that doesn't work for some reason
+            True: self.exit_app
+        })
+
+    def exit_app(self, input=None):
         self.editing = False
 
 def myFunction(*args):
