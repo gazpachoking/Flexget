@@ -312,10 +312,12 @@ class ParserGuessit(Parser):
         return options
 
     #   movie_parser API
+    @plugin.priority(100)
     def parse_movie(self, data, name=None, **kwargs):
         return self.parse(data, PARSER_MOVIE, name=name, **kwargs)
 
     #   series_parser API
+    @plugin.priority(100)
     def parse_series(self, data, name=None, **kwargs):
         return self.parse(data, PARSER_EPISODE, name=name, **kwargs)
 

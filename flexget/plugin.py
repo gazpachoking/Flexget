@@ -481,7 +481,7 @@ def get_plugins(phase=None, group=None, context=None, category=None, name=None, 
         if category and not category == plugin.category:
             return False
         if name is not None and name != plugin.name:
-            raise False
+            return False
         if min_api is not None and plugin.api_ver < min_api:
             return False
         return True
