@@ -120,8 +120,8 @@ def version():
 
 
 @task
-@cmdopts(['dev', None, 'Bumps to new development version instead of release version.'])
-def increment_version():
+@cmdopts([('dev', None, 'Bumps to new development version instead of release version.')])
+def increment_version(options):
     """Increments either release or dev version by 1"""
     print 'current version: %s' % __version__
     ver_split = __version__.split('.')
