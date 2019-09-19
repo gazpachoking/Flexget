@@ -1,4 +1,6 @@
 from __future__ import unicode_literals, division, absolute_import
+from builtins import *  # noqa pylint: disable=unused-import, redefined-builtin
+
 import argparse
 import functools
 import logging
@@ -7,7 +9,6 @@ from flexget import options
 from flexget.event import event
 
 log = logging.getLogger('cli_config')
-
 
 """
 Allows specifying yml configuration values from commandline parameters.
@@ -31,27 +32,27 @@ Commandline example::
 
 def replace_in_item(replaces, item):
     replace = functools.partial(replace_in_item, replaces)
-    if isinstance(item, basestring):
+    if isinstance(item, str):
         # Do replacement in text objects
-        for key, val in replaces.iteritems():
+        for key, val in replaces.items():
             item = item.replace('$%s' % key, val)
         return item
     elif isinstance(item, list):
         # Make a new list with replacements done on each item
-        return map(replace, item)
+        return list(map(replace, item))
     elif isinstance(item, dict):
         # Make a new dict with replacements done on keys and values
-        return dict(map(replace, kv_pair) for kv_pair in item.iteritems())
+        return dict(list(map(replace, kv_pair)) for kv_pair in item.items())
     else:
         # We don't know how to do replacements on this item, just return it
         return item
 
 
 @event('manager.before_config_validate')
-def substitute_cli_variables(manager):
+def substitute_cli_variables(config, manager):
     if not manager.options.execute.cli_config:
         return
-    manager.config = replace_in_item(dict(manager.options.execute.cli_config), manager.config)
+    return replace_in_item(dict(manager.options.execute.cli_config), config)
 
 
 def key_value_pair(text):
@@ -62,5 +63,10 @@ def key_value_pair(text):
 
 @event('options.register')
 def register_parser_arguments():
-    options.get_parser('execute').add_argument('--cli-config', nargs='+', type=key_value_pair, metavar='VARIABLE=VALUE',
-                                               help='configuration parameters trough commandline')
+    options.get_parser('execute').add_argument(
+        '--cli-config',
+        nargs='+',
+        type=key_value_pair,
+        metavar='VARIABLE=VALUE',
+        help='configuration parameters through commandline',
+    )

@@ -1,14 +1,15 @@
 #!/usr/bin/python
+from __future__ import unicode_literals, division, absolute_import, print_function
+from builtins import *  # noqa pylint: disable=unused-import, redefined-builtin
 
-from __future__ import unicode_literals, division, absolute_import
-import os
+from ._version import __version__  # noqa
+
 import logging
-from flexget import logger
-from flexget.options import get_parser
-from flexget import plugin
-from flexget.manager import Manager
+import os
+import sys
 
-__version__ = '{git}'
+from flexget import logger
+from flexget.manager import Manager
 
 log = logging.getLogger('main')
 
@@ -16,18 +17,55 @@ log = logging.getLogger('main')
 def main(args=None):
     """Main entry point for Command Line Interface"""
 
-    logger.initialize()
+    try:
+        logger.initialize()
 
-    plugin.load_plugins()
+        try:
+            manager = Manager(args)
+        except (IOError, ValueError) as e:
+            if _is_debug():
+                import traceback
 
-    options = get_parser().parse_args(args)
+                traceback.print_exc()
+            else:
+                print('Could not instantiate manager: %s' % e, file=sys.stderr)
+            sys.exit(1)
 
-    manager = Manager(options)
+        try:
+            if manager.options.profile:
+                try:
+                    import cProfile as profile
+                except ImportError:
+                    import profile
+                profile.runctx(
+                    'manager.start()',
+                    globals(),
+                    locals(),
+                    os.path.join(manager.config_base, manager.options.profile),
+                )
+            else:
+                manager.start()
+        except (IOError, ValueError) as e:
+            if _is_debug():
+                import traceback
 
-    log_level = logging.getLevelName(options.loglevel.upper())
-    log_file = os.path.expanduser(manager.options.logfile)
-    # If an absolute path is not specified, use the config directory.
-    if not os.path.isabs(log_file):
-        log_file = os.path.join(manager.config_base, log_file)
-    logger.start(log_file, log_level)
-    manager.run_cli_command()
+                traceback.print_exc()
+            else:
+                print('Could not start manager: %s' % e, file=sys.stderr)
+
+            sys.exit(1)
+    except KeyboardInterrupt:
+        if _is_debug():
+            import traceback
+
+            traceback.print_exc()
+
+        print('Killed with keyboard interrupt.', file=sys.stderr)
+        sys.exit(1)
+
+
+def _is_debug():
+    return any(
+        arg in ['debug', '--debug', '--loglevel=trace', '--loglevel=debug']
+        for arg in [a.lower() for a in sys.argv]
+    )

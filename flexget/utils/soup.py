@@ -1,4 +1,6 @@
 from __future__ import unicode_literals, division, absolute_import
+from builtins import *  # noqa pylint: disable=unused-import, redefined-builtin
+
 from bs4 import BeautifulSoup
 
 # Hack, hide DataLossWarnings
@@ -6,8 +8,9 @@ from bs4 import BeautifulSoup
 # Also it doesn't seem to be available in older version from html5lib, removing it
 import warnings
 from html5lib.constants import DataLossWarning
+
 warnings.simplefilter('ignore', DataLossWarning)
 
 
-def get_soup(obj):
-    return BeautifulSoup(obj, 'html5lib')
+def get_soup(obj, parser='html5lib'):
+    return BeautifulSoup(obj, parser)

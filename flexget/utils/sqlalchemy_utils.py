@@ -2,7 +2,13 @@
 Miscellaneous SQLAlchemy helpers.
 """
 from __future__ import unicode_literals, division, absolute_import
+from builtins import *  # noqa pylint: disable=unused-import, redefined-builtin
+from past.builtins import basestring
+
 import logging
+
+import sqlalchemy
+
 from sqlalchemy import ColumnDefault, Sequence, Index
 from sqlalchemy.types import TypeEngine
 from sqlalchemy.schema import Table, MetaData
@@ -74,6 +80,7 @@ def table_add_column(table, name, col_type, session, default=None):
     type_string = session.bind.engine.dialect.type_compiler.process(col_type)
     statement = 'ALTER TABLE %s ADD %s %s' % (table.name, name, type_string)
     session.execute(statement)
+    session.commit()
     # Update the table with the default value if given
     if default is not None:
         # Get the new schema with added column
@@ -83,6 +90,7 @@ def table_add_column(table, name, col_type, session, default=None):
         default._set_parent(getattr(table.c, name))
         statement = table.update().values({name: default.execute(bind=session.bind)})
         session.execute(statement)
+        session.commit()
 
 
 def drop_tables(names, session):
@@ -122,3 +130,19 @@ def create_index(table_name, session, *column_names):
         Index(index_name, *columns).create(bind=session.bind)
     except OperationalError:
         log.debug('Error creating index.', exc_info=True)
+
+
+class ContextSession(sqlalchemy.orm.Session):
+    """:class:`sqlalchemy.orm.Session` which can be used as context manager"""
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        try:
+            if exc_type is None:
+                self.commit()
+            else:
+                self.rollback()
+        finally:
+            self.close()

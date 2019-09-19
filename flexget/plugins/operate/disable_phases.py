@@ -1,4 +1,6 @@
 from __future__ import unicode_literals, division, absolute_import
+from builtins import *  # noqa pylint: disable=unused-import, redefined-builtin
+
 import logging
 
 from flexget import plugin
@@ -23,7 +25,8 @@ class PluginDisablePhases(object):
         return {'type': 'array', 'items': {'type': 'string', 'enum': plugin.task_phases}}
 
     def on_task_start(self, task, config):
-        map(task.disable_phase, config)
+        list(map(task.disable_phase, config))
+
 
 @event('plugin.register')
 def register_plugin():

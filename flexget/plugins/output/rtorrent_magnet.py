@@ -1,4 +1,6 @@
 from __future__ import unicode_literals, division, absolute_import
+from builtins import *  # noqa pylint: disable=unused-import, redefined-builtin
+
 import logging
 import re
 import os
@@ -50,7 +52,10 @@ class PluginRtorrentMagnet(object):
 
         for entry in task.accepted:
             if 'output' in entry:
-                log.debug('Ignoring, %s already has an output file: %s' % (entry['title'], entry['output']))
+                log.debug(
+                    'Ignoring, %s already has an output file: %s'
+                    % (entry['title'], entry['output'])
+                )
                 continue
 
             for url in entry.get('urls', [entry['url']]):

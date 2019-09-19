@@ -1,5 +1,7 @@
 """Plugin for mocking task data."""
 from __future__ import unicode_literals, division, absolute_import
+from builtins import *  # noqa pylint: disable=unused-import, redefined-builtin
+
 import logging
 
 from flexget import plugin
@@ -26,24 +28,18 @@ class Mock(object):
         'type': 'array',
         'items': {
             'type': 'object',
-            'properties': {
-                'title': {'type': 'string'},
-                'url': {'type': 'string'}
-            },
-            'required': ['title']
-        }
+            'properties': {'title': {'type': 'string'}, 'url': {'type': 'string'}},
+            'required': ['title'],
+        },
     }
 
     def on_task_input(self, task, config):
         entries = []
         for line in config:
             entry = Entry(line)
-            # no url specified, add random one (ie. test)
-            if not 'url' in entry:
-                import string
-                import random
-                entry['url'] = 'http://localhost/mock/%s' % \
-                               ''.join([random.choice(string.letters + string.digits) for x in range(1, 30)])
+            # no url specified, add random one based on title (ie. test)
+            if 'url' not in entry:
+                entry['url'] = 'mock://localhost/mock/%s' % hash(entry['title'])
             entries.append(entry)
         return entries
 

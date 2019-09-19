@@ -1,4 +1,6 @@
 from __future__ import unicode_literals, division, absolute_import
+from builtins import *  # noqa pylint: disable=unused-import, redefined-builtin
+
 import logging
 
 from flexget import plugin
@@ -15,7 +17,7 @@ class UrlFix(object):
 
     schema = {'type': 'boolean'}
 
-    @plugin.priority(-255)
+    @plugin.priority(plugin.PRIORITY_LAST)
     def on_task_input(self, task, config):
         if config is False:
             return

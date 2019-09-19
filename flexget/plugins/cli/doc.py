@@ -1,11 +1,13 @@
-from __future__ import unicode_literals, division, absolute_import, print_function
+from __future__ import unicode_literals, division, absolute_import
+from builtins import *  # noqa pylint: disable=unused-import, redefined-builtin
+
 import logging
 import sys
 
 from flexget import options
 from flexget.event import event
+from flexget.terminal import console
 from flexget.plugin import plugins
-
 
 log = logging.getLogger('doc')
 
@@ -41,13 +43,13 @@ def print_doc(manager, options):
     plugin = plugins.get(plugin_name, None)
     if plugin:
         if not plugin.instance.__doc__:
-            print('Plugin %s does not have documentation' % plugin_name)
+            console('Plugin %s does not have documentation' % plugin_name)
         else:
-            print('')
-            print(trim(plugin.instance.__doc__))
-            print('')
+            console('')
+            console(trim(plugin.instance.__doc__))
+            console('')
     else:
-        print('Could not find plugin %s' % plugin_name)
+        console('Could not find plugin %s' % plugin_name)
 
 
 @event('options.register')

@@ -1,16 +1,25 @@
 from __future__ import unicode_literals, division, absolute_import
+
 import logging
 import re
 import time
+from builtins import *  # noqa pylint: disable=unused-import, redefined-builtin
 
 from requests import RequestException
 
 from flexget import plugin
 from flexget.entry import Entry
 from flexget.event import event
+from flexget.utils.cached_input import cached
 from flexget.utils.log import log_once
 from flexget.utils.soup import get_soup
-from flexget.utils.cached_input import cached
+
+try:
+    # NOTE: Importing other plugins is discouraged!
+    from flexget.components.imdb.utils import extract_id
+except ImportError:
+    raise plugin.DependencyError(issued_by=__name__, missing='imdb')
+
 
 log = logging.getLogger('rlslog')
 
@@ -20,9 +29,7 @@ class RlsLog(object):
     Adds support for rlslog.net as a feed.
     """
 
-    def validator(self):
-        from flexget import validator
-        return validator.factory('url')
+    schema = {'type': 'string', 'format': 'url'}
 
     def parse_rlslog(self, rlslog_url, task):
         """
@@ -52,6 +59,7 @@ class RlsLog(object):
             # find imdb url
             link_imdb = entrybody.find('a', text=re.compile(r'imdb', re.IGNORECASE))
             if link_imdb:
+                release['imdb_id'] = extract_id(link_imdb['href'])
                 release['imdb_url'] = link_imdb['href']
 
             # find google search url
@@ -60,7 +68,10 @@ class RlsLog(object):
                 release['url'] = google['href']
                 releases.append(release)
             else:
-                log_once('%s skipped due to missing or unsupported download link' % (release['title']), log)
+                log_once(
+                    '%s skipped due to missing or unsupported download link' % (release['title']),
+                    log,
+                )
 
         return releases
 
@@ -83,7 +94,10 @@ class RlsLog(object):
                 if number == 1:
                     raise
                 else:
-                    log.verbose('Error receiving content, retrying in 5s. Try [%s of 2]. Error: %s' % (number + 1, e))
+                    log.verbose(
+                        'Error receiving content, retrying in 5s. Try [%s of 2]. Error: %s'
+                        % (number + 1, e)
+                    )
                     time.sleep(5)
 
         # Construct entry from release

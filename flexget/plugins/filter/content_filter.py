@@ -1,6 +1,7 @@
 from __future__ import unicode_literals, division, absolute_import
+from builtins import *  # noqa pylint: disable=unused-import, redefined-builtin
+
 import logging
-import posixpath
 from fnmatch import fnmatch
 
 from flexget import plugin
@@ -29,15 +30,16 @@ class FilterContentFilter(object):
             'require': one_or_more({'type': 'string'}),
             'require_all': one_or_more({'type': 'string'}),
             'reject': one_or_more({'type': 'string'}),
-            'strict': {'type': 'boolean', 'default': False}
+            'require_mainfile': {'type': 'boolean', 'default': False},
+            'strict': {'type': 'boolean', 'default': False},
         },
-        'additionalProperties': False
+        'additionalProperties': False,
     }
 
     def prepare_config(self, config):
         for key in ['require', 'require_all', 'reject']:
             if key in config:
-                if isinstance(config[key], basestring):
+                if isinstance(config[key], str):
                     config[key] = [config[key]]
         return config
 
@@ -65,13 +67,21 @@ class FilterContentFilter(object):
             # download plugin has already printed a downloading message.
             if config.get('require'):
                 if not matching_mask(files, config['require']):
-                    log.info('Entry %s does not have any of the required filetypes, rejecting' % entry['title'])
+                    log.info(
+                        'Entry %s does not have any of the required filetypes, rejecting'
+                        % entry['title']
+                    )
                     entry.reject('does not have any of the required filetypes', remember=True)
                     return True
             if config.get('require_all'):
                 # Make sure each mask matches at least one of the contained files
-                if not all(any(fnmatch(file, mask) for file in files) for mask in config['require_all']):
-                    log.info('Entry %s does not have all of the required filetypes, rejecting' % entry['title'])
+                if not all(
+                    any(fnmatch(file, mask) for file in files) for mask in config['require_all']
+                ):
+                    log.info(
+                        'Entry %s does not have all of the required filetypes, rejecting'
+                        % entry['title']
+                    )
                     entry.reject('does not have all of the required filetypes', remember=True)
                     return True
             if config.get('reject'):
@@ -80,30 +90,33 @@ class FilterContentFilter(object):
                     log.info('Entry %s has banned file %s, rejecting' % (entry['title'], mask))
                     entry.reject('has banned file %s' % mask, remember=True)
                     return True
-
-    def parse_torrent_files(self, entry):
-        if 'torrent' in entry:
-            files = [posixpath.join(item['path'], item['name']) for item in entry['torrent'].get_filelist()]
-            if files:
-                # TODO: should not add this to entry, this is a filter plugin
-                entry['content_files'] = files
+            if config.get('require_mainfile') and len(files) > 1:
+                best = None
+                for f in entry['torrent'].get_filelist():
+                    if not best or f['size'] > best:
+                        best = f['size']
+                if (100 * float(best) / float(entry['torrent'].size)) < 90:
+                    log.info('Entry %s does not have a main file, rejecting' % (entry['title']))
+                    entry.reject('does not have a main file', remember=True)
+                    return True
 
     @plugin.priority(150)
     def on_task_modify(self, task, config):
         if task.options.test or task.options.learn:
-            log.info('Plugin is partially disabled with --test and --learn because content filename information may not be available')
-            #return
+            log.info(
+                'Plugin is partially disabled with --test and --learn '
+                'because content filename information may not be available'
+            )
+            # return
 
         config = self.prepare_config(config)
         for entry in task.accepted:
-            # TODO: I don't know if we can pares filenames from nzbs, just do torrents for now
-            # possibly also do compressed files in the future
-            self.parse_torrent_files(entry)
             if self.process_entry(task, entry, config):
-                task.rerun()
-            elif not 'content_files' in entry and config.get('strict'):
+                task.rerun(plugin='content_filter')
+            elif 'content_files' not in entry and config.get('strict'):
                 entry.reject('no content files parsed for entry', remember=True)
-                task.rerun()
+                task.rerun(plugin='content_filter')
+
 
 @event('plugin.register')
 def register_plugin():

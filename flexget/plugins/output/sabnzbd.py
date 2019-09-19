@@ -1,10 +1,12 @@
 from __future__ import unicode_literals, division, absolute_import
+from builtins import *  # noqa pylint: disable=unused-import, redefined-builtin
+from future.moves.urllib.parse import urlencode
+
 import logging
-import urllib
 
 from flexget import plugin
 from flexget.event import event
-from flexget.utils.tools import urlopener
+from requests import RequestException
 
 log = logging.getLogger('sabnzbd')
 
@@ -29,18 +31,21 @@ class OutputSabnzbd(object):
         priority: ...
     """
 
-    def validator(self):
-        from flexget import validator
-        config = validator.factory('dict')
-        config.accept('text', key='key', required=True)
-        config.accept('url', key='url', required=True)
-        config.accept('text', key='category')
-        config.accept('text', key='script')
-        config.accept('text', key='pp')
-        config.accept('integer', key='priority')
-        config.accept('text', key='password')
-        config.accept('text', key='username')
-        return config
+    schema = {
+        'type': 'object',
+        'properties': {
+            'key': {'type': 'string'},
+            'url': {'type': 'string', 'format': 'url'},
+            'category': {'type': 'string'},
+            'script': {'type': 'string'},
+            'pp': {'type': 'string'},
+            'priority': {'type': 'integer'},
+            'password': {'type': 'string'},
+            'username': {'type': 'string'},
+        },
+        'required': ['key', 'url'],
+        'additionalProperties': False,
+    }
 
     def get_params(self, config):
         params = {}
@@ -58,7 +63,6 @@ class OutputSabnzbd(object):
             params['ma_username'] = config['username']
         if 'password' in config:
             params['ma_password'] = config['password']
-        params['mode'] = 'addurl'
         return params
 
     def on_task_output(self, task, config):
@@ -78,20 +82,27 @@ class OutputSabnzbd(object):
             # add cleaner nzb name (undocumented api feature)
             params['nzbname'] = ''.join([x for x in entry['title'] if ord(x) < 128])
 
-            request_url = config['url'] + urllib.urlencode(params)
+            # check whether file is local or remote
+            if entry['url'].startswith('file://'):
+                params['mode'] = 'addlocalfile'
+                params['name'] = entry['location']
+            else:
+                params['mode'] = 'addurl'
+
+            request_url = config['url'] + urlencode(params)
             log.debug('request_url: %s' % request_url)
             try:
-                response = urlopener(request_url, log).read()
-            except Exception as e:
+                response = task.requests.get(request_url)
+            except RequestException as e:
                 log.critical('Failed to use sabnzbd. Requested %s' % request_url)
-                log.critical('Result was: %s' % e)
+                log.critical('Result was: %s' % e.args[0])
                 entry.fail('sabnzbd unreachable')
                 if task.options.debug:
                     log.exception(e)
                 continue
 
-            if 'error' in response.lower():
-                entry.fail(response.replace('\n', ''))
+            if 'error' in response.text.lower():
+                entry.fail(response.text.replace('\n', ''))
             else:
                 log.info('Added `%s` to SABnzbd' % (entry['title']))
 

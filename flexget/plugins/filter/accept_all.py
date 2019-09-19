@@ -1,4 +1,6 @@
 from __future__ import unicode_literals, division, absolute_import
+from builtins import *  # noqa pylint: disable=unused-import, redefined-builtin
+
 import logging
 
 from flexget import plugin
@@ -22,6 +24,7 @@ class FilterAcceptAll(object):
         if config:
             for entry in task.entries:
                 entry.accept()
+
 
 @event('plugin.register')
 def register_plugin():

@@ -1,15 +1,18 @@
 """Logging utilities"""
-
 from __future__ import unicode_literals, division, absolute_import
+from builtins import *  # noqa pylint: disable=unused-import, redefined-builtin
+
 import logging
 import hashlib
 from datetime import datetime, timedelta
+
 from sqlalchemy import Column, Integer, String, DateTime, Index
+
+from flexget.utils.database import with_session
 from flexget import db_schema
-from flexget.utils.sqlalchemy_utils import table_schema
-from flexget.manager import Session
-from flexget.event import event
 from flexget import logger as f_logger
+from flexget.utils.sqlalchemy_utils import table_schema
+from flexget.event import event
 
 log = logging.getLogger('util.log')
 Base = db_schema.versioned_base('log_once', 0)
@@ -42,7 +45,7 @@ class LogMessage(Base):
 
 
 @event('manager.db_cleanup')
-def purge(session):
+def purge(manager, session):
     """Purge old messages from database"""
     old = datetime.now() - timedelta(days=365)
 
@@ -51,28 +54,37 @@ def purge(session):
         log.verbose('Purged %s entries from log_once table.' % result)
 
 
-def log_once(message, logger=logging.getLogger('log_once'), once_level=logging.INFO, suppressed_level=f_logger.VERBOSE):
+@with_session
+def log_once(
+    message,
+    logger=logging.getLogger('log_once'),
+    once_level=logging.INFO,
+    suppressed_level=f_logger.VERBOSE,
+    session=None,
+):
     """
     Log message only once using given logger`. Returns False if suppressed logging.
     When suppressed, `suppressed_level` level is still logged.
     """
+    # If there is no active manager, don't access the db
+    from flexget.manager import manager
+
+    if not manager:
+        log.warning('DB not initialized. log_once will not work properly.')
+        logger.log(once_level, message)
+        return
 
     digest = hashlib.md5()
-    digest.update(message.encode('latin1', 'replace')) # ticket:250
+    digest.update(message.encode('latin1', 'replace'))  # ticket:250
     md5sum = digest.hexdigest()
 
-    session = Session()
-    try:
-        # abort if this has already been logged
-        if session.query(LogMessage).filter_by(md5sum=md5sum).first():
-            logger.log(suppressed_level, message)
-            return False
+    # abort if this has already been logged
+    if session.query(LogMessage).filter_by(md5sum=md5sum).first():
+        logger.log(suppressed_level, message)
+        return False
 
-        row = LogMessage(md5sum)
-        session.add(row)
-        session.commit()
-    finally:
-        session.close()
+    row = LogMessage(md5sum)
+    session.add(row)
 
     logger.log(once_level, message)
     return True
