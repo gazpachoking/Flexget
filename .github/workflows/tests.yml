@@ -15,6 +15,11 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
+    - name: Install unrar  # used by some flexget tests
+      if: matrix.operating-system == 'ubuntu-latest'
+      run: |
+        sudo apt-get update
+        sudo apt-get install -qy unrar
     - name: Set up Python ${{ matrix.python-version }}
       uses: actions/setup-python@v1
       with:
